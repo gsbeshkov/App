@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - cronJob.yaml
+
+components:
+  - ../common/mongo-connection-data
+
+configMapGenerator:
+  - name: credential-rotator-scripts
+    files:
+      - rotate.sh

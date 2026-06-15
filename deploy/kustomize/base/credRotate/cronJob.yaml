@@ -1,0 +1,85 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: credential-rotator
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: credential-rotator
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "patch", "watch"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "pods/attach"]
+    verbs: ["get", "create", "delete", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: credential-rotator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: credential-rotator
+subjects:
+  - kind: ServiceAccount
+    name: credential-rotator
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: credential-rotator
+spec:
+  schedule: "* * * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: credential-rotator
+          restartPolicy: OnFailure
+          containers:
+            - name: rotator
+              image: bitnami/kubectl:latest
+              env:
+                - name: SECRET_NAME
+                  value: "mongo-connection-data"
+                - name: DEPLOYMENT_NAME
+                  value: "proxy-app"
+                - name: MONGO_HOST
+                  valueFrom:
+                    secretKeyRef:
+                      name: mongo-connection-data
+                      key: MONGO_HOST
+                - name: MONGO_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: mongo-connection-data
+                      key: MONGO_DB
+                - name: MONGO_ADMIN_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: mongo-connection-data
+                      key: MONGO_ADMIN_USER
+                - name: MONGO_ADMIN_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: mongo-connection-data
+                      key: MONGO_ADMIN_PASSWORD
+              command:
+                - /bin/sh
+                - /scripts/rotate.sh
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+          volumes:
+            - name: scripts
+              configMap:
+                name: credential-rotator-scripts
+                defaultMode: 0755

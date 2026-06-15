@@ -1,0 +1,31 @@
+services:
+  mongo:
+    image: mongo:latest
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: securePassw0rd
+    volumes:
+      - mongo-data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    ports:
+      - "27017:27017"
+  proxy-app:
+    image: proxy-app:latest
+    restart: always
+    depends_on:
+      - mongo
+    environment:
+      PROXY_URL: https://libretranslate.com/translate
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 5000
+      MONGO_HOST: mongo:27017
+      MONGO_DB: proxyApp
+      MONGO_USER: proxyUser
+      MONGO_PASSWORD: verySecPassw0rd
+    ports:
+      - "5000:5000"
+volumes:
+  mongo-data:
+
+

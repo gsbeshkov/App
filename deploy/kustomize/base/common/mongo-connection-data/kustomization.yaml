@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+secretGenerator:
+  - name: mongo-connection-data
+    options:
+      disableNameSuffixHash: true
+    literals:
+      - MONGO_DB=proxyApp
+      - MONGO_HOST=mongo:27017
